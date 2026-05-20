@@ -297,9 +297,9 @@ export default function ComponentVariablesDialog({
   };
 
   // Handle link default value change (via LinkSettings standalone mode)
-  const handleLinkDefaultValueChange = (value: LinkSettingsValue) => {
+  const handleLinkDefaultValueChange = (value: LinkSettingsValue | null) => {
     if (!componentId || !selectedVariableId) return;
-    updateTextVariable(componentId, selectedVariableId, { default_value: value });
+    updateTextVariable(componentId, selectedVariableId, { default_value: value ?? undefined });
   };
 
   const handleAudioDefaultValueChange = (value: AudioSettingsValue) => {

@@ -170,7 +170,7 @@ export default function ComponentVariableOverrides({
     (category: 'image' | 'link' | 'audio' | 'video' | 'icon', variableId: string) => {
       const override = componentOverrides?.[category]?.[variableId];
       const def = variables.find(v => v.id === variableId)?.default_value;
-      return override ?? def;
+      return override !== undefined ? override : def;
     },
     [componentOverrides, variables],
   );

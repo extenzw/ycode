@@ -63,8 +63,8 @@ interface LayerModeProps {
 // Standalone mode props - for component variables
 interface StandaloneModeProps {
   mode: 'standalone';
-  value: LinkSettingsValue | undefined;
-  onChange: (value: LinkSettingsValue) => void;
+  value: LinkSettingsValue | null | undefined;
+  onChange: (value: LinkSettingsValue | null) => void;
   layer?: never;
   onLayerUpdate?: never;
 }
@@ -311,6 +311,8 @@ export default function LinkSettings(props: LinkSettingsProps) {
       | { value: LinkType | 'none'; label: string; icon: string; disabled?: boolean }
       | { type: 'separator' }
     > = [
+      { value: 'none', label: 'No link', icon: 'none' },
+      { type: 'separator' },
       { value: 'page', label: 'Page', icon: 'page' },
       { value: 'asset', label: 'Asset', icon: 'paperclip' },
       { value: 'field', label: 'CMS field', icon: 'database', disabled: linkFieldGroups.length === 0 },
@@ -344,8 +346,8 @@ export default function LinkSettings(props: LinkSettingsProps) {
   const updateLinkSettings = useCallback(
     (newSettings: Partial<LinkSettingsType> | null) => {
       if (isStandaloneMode) {
-        // In standalone mode, call onChange with the new settings
-        standaloneOnChange?.(newSettings as LinkSettingsType);
+        // In standalone mode, call onChange with the new settings (null = explicit "no link" override)
+        standaloneOnChange?.(newSettings as LinkSettingsType | null);
         return;
       }
 
@@ -694,7 +696,7 @@ export default function LinkSettings(props: LinkSettingsProps) {
       {isStandaloneMode && !useStackedLayout && typeLabel && (
         <Label variant="muted">{typeLabel}</Label>
       )}
-      <div className={useStackedLayout ? '' : 'col-span-2 *:w-full'}>
+      <div className={useStackedLayout ? '*:w-full' : 'col-span-2 *:w-full'}>
         {linkedLinkVariable ? (
           <Button
             asChild
@@ -720,7 +722,7 @@ export default function LinkSettings(props: LinkSettingsProps) {
           </Button>
         ) : (
           <Select
-            value={linkType === 'none' ? '' : linkType}
+            value={linkType}
             onValueChange={(value) => handleLinkTypeChange(value as LinkType | 'none')}
             disabled={isLockedByOther}
           >
@@ -729,7 +731,7 @@ export default function LinkSettings(props: LinkSettingsProps) {
                 ? () => handleLinkTypeChange('none')
                 : undefined}
             >
-              <SelectValue placeholder="Page or URL..." />
+              <SelectValue placeholder="No link" />
             </SelectTrigger>
             <SelectContent>
               {linkTypeOptions.map((option, index) => {
@@ -934,7 +936,7 @@ export default function LinkSettings(props: LinkSettingsProps) {
       {isStandaloneMode && !useStackedLayout && <Label variant="muted">Anchor</Label>}
       {useStackedLayout && <Label variant="muted" className="mb-1.5">Anchor</Label>}
 
-      <div className={useStackedLayout ? '' : 'col-span-2 *:w-full'}>
+      <div className={useStackedLayout ? '*:w-full' : 'col-span-2 *:w-full'}>
         <Select
           value={anchorLayerId || ''}
           onValueChange={handleAnchorLayerIdChange}

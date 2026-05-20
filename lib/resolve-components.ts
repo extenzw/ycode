@@ -405,10 +405,12 @@ export function applyComponentOverrides(
     // Check if this layer has a link variable linked
     const linkedLinkVariableId = (layer.variables?.link as any)?.variable_id;
     if (linkedLinkVariableId) {
-      // Check for override first, then fall back to variable's default value
+      // Check for override first, then fall back to variable's default value.
+      // Use `!== undefined` (not `??`) so an explicit `null` override (user cleared
+      // the link via "No link") is respected instead of reverting to the default.
       const overrideValue = overrides?.link?.[linkedLinkVariableId];
       const variableDef = componentVariables?.find(v => v.id === linkedLinkVariableId);
-      const linkValue = (overrideValue ?? variableDef?.default_value) as any;
+      const linkValue = (overrideValue !== undefined ? overrideValue : variableDef?.default_value) as any;
 
       if (linkValue) {
         // Apply the value to this layer's link variable, keeping the variable_id for reference
@@ -419,6 +421,11 @@ export function applyComponentOverrides(
             link: { ...linkValue, variable_id: linkedLinkVariableId },
           },
         };
+      } else {
+        // Explicit "No link" — strip any inherited link settings from the layer
+        // so the rendered element has no href / link wrapper.
+        const { link: _ignored, ...restVariables } = updatedLayer.variables ?? {};
+        updatedLayer = { ...updatedLayer, variables: restVariables };
       }
     }
 

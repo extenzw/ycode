@@ -64,7 +64,7 @@ export default function FormSettings({ layer, onLayerUpdate }: FormSettingsProps
   const formSettings: FormSettingsType = layer?.settings?.form || {};
   const successAction = formSettings.success_action || 'message';
   const handleRedirectLinkChange = useCallback(
-    (value: LinkSettingsValue) => {
+    (value: LinkSettingsValue | null) => {
       if (!layer) return;
 
       onLayerUpdate(layer.id, {
@@ -72,7 +72,7 @@ export default function FormSettings({ layer, onLayerUpdate }: FormSettingsProps
           ...layer.settings,
           form: {
             ...layer.settings?.form,
-            redirect_url: value,
+            redirect_url: value ?? undefined,
           },
         },
       });
