@@ -11,6 +11,7 @@
 import { layerToHtml, buildAnchorMap } from '@/lib/page-fetcher'
 import type { PageData } from '@/lib/page-fetcher'
 import { getClassesString } from '@/lib/layer-utils'
+import { getEffectiveApplyStyle } from '@/lib/animation-utils'
 
 import type { Layer, Page, PageFolder } from '@/types'
 
@@ -376,7 +377,7 @@ export function collectInteractions(layers: Layer[]): ExportedInteraction[] {
                 toDisplay === 'hidden' || toDisplay === 'visible'
                   ? (toDisplay as 'hidden' | 'visible')
                   : undefined,
-              applyDisplayOnLoad: t.apply_styles?.display === 'on-load',
+              applyDisplayOnLoad: getEffectiveApplyStyle(interaction.trigger, 'display', t.apply_styles) === 'on-load',
             }
           })
           .filter((t) => t.fromDisplay !== undefined || t.toDisplay !== undefined)

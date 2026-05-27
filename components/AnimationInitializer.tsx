@@ -14,7 +14,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 
 import { ITEMS_INJECTED_EVENT, type ItemsInjectedDetail } from '@/components/FilterableCollection';
-import { buildGsapProps, addTweenToTimeline, createSplitTextAnimation, generateInitialAnimationCSS, setColorVariableResolver } from '@/lib/animation-utils';
+import { buildGsapProps, addTweenToTimeline, createSplitTextAnimation, generateInitialAnimationCSS, getEffectiveApplyStyle, setColorVariableResolver } from '@/lib/animation-utils';
 import { getCurrentBreakpoint } from '@/lib/breakpoint-utils';
 import { remapLayerIdsForCollectionItem } from '@/lib/collection-utils';
 import { useColorVariablesStore } from '@/stores/useColorVariablesStore';
@@ -78,8 +78,12 @@ function collectHiddenLayerInfo(interactions: CollectedInteraction[]): Map<strin
     const breakpoints = interaction.timeline?.breakpoints || null;
 
     (interaction.tweens || []).forEach((tween) => {
-      // Check if this tween has display: hidden with on-load apply style
-      if (tween.from?.display === 'hidden' && tween.apply_styles?.display === 'on-load') {
+      // Hide if display:hidden with effective on-load mode (explicit, or implicit
+      // for intro triggers like load/scroll-into-view).
+      if (
+        tween.from?.display === 'hidden' &&
+        getEffectiveApplyStyle(interaction.trigger, 'display', tween.apply_styles) === 'on-load'
+      ) {
         hiddenMap.set(tween.layer_id, breakpoints);
       }
     });

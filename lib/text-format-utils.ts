@@ -311,16 +311,23 @@ function resolveImageLinkHref(
 /**
  * Flatten multi-paragraph Tiptap content into a single paragraph with hardBreak nodes.
  * Used for heading/text elements that should not contain nested block elements.
- * Converts: [paragraph("a"), paragraph("b")] → [paragraph("a", hardBreak, "b")]
+ * Treats `heading` blocks like paragraphs so their inline content is preserved without
+ * producing a nested <h1>-<h6> inside the simple text layer's own heading tag.
+ * Converts: [paragraph("a"), heading("b")] → [paragraph("a", hardBreak, "b")]
  */
 export function flattenTiptapParagraphs(content: any): any {
   if (!content || typeof content !== 'object' || content.type !== 'doc') return content;
   const blocks = content.content;
-  if (!Array.isArray(blocks) || blocks.length <= 1) return content;
+  if (!Array.isArray(blocks) || blocks.length === 0) return content;
+
+  const FLATTENABLE = new Set(['paragraph', 'heading']);
+  const allFlattenable = blocks.every((b: any) => FLATTENABLE.has(b?.type));
+  if (!allFlattenable) return content;
+
+  if (blocks.length === 1 && blocks[0].type === 'paragraph') return content;
 
   const merged: any[] = [];
   blocks.forEach((block: any, i: number) => {
-    if (block.type !== 'paragraph') return;
     if (i > 0 && merged.length > 0) {
       merged.push({ type: 'hardBreak' });
     }

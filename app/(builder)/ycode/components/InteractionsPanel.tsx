@@ -67,6 +67,8 @@ import {
   buildGsapProps,
   addTweenToTimeline,
   createSplitTextAnimation,
+  getDefaultApplyStyles,
+  getEffectiveApplyStyle,
   updateInteractionById,
   updateInteractionTweens,
   updateTweenById,
@@ -948,16 +950,7 @@ export default function InteractionsPanel({
       ease: 'power1.out',
       from: {},
       to: {},
-      apply_styles: {
-        x: 'on-trigger',
-        y: 'on-trigger',
-        rotation: 'on-trigger',
-        scale: 'on-trigger',
-        skewX: 'on-trigger',
-        skewY: 'on-trigger',
-        autoAlpha: 'on-trigger',
-        display: 'on-trigger',
-      },
+      apply_styles: getDefaultApplyStyles(selectedInteraction.trigger),
     };
 
     const updatedInteractions = updateInteractionById(
@@ -2278,34 +2271,47 @@ export default function InteractionsPanel({
 
                       return (
                         <div key={prop.key} className="flex items-center gap-1.25">
-                          {!prop.toOnly && (
-                            <>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="xs"
-                                    variant="secondary"
-                                    className="size-7 p-0 shrink-0 transition-none"
-                                    disabled={isFromCurrent}
-                                    onClick={() => {
-                                      const currentValue = selectedTween.apply_styles?.[prop.key] || 'on-trigger';
-                                      handleUpdateTween(selectedTween.id, {
-                                        apply_styles: {
-                                          ...selectedTween.apply_styles,
-                                          [prop.key]: currentValue === 'on-load' ? 'on-trigger' : 'on-load',
-                                        },
-                                      });
-                                    }}
-                                  >
-                                    <Icon name={selectedTween.apply_styles?.[prop.key] === 'on-load' ? 'page' : 'cursor-default'} />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" align="start">
-                                  {selectedTween.apply_styles?.[prop.key] === 'on-load'
-                                    ? 'Apply property style on page load'
-                                    : 'Apply property style on trigger'}
-                                </TooltipContent>
-                              </Tooltip>
+                          {!prop.toOnly && (() => {
+                            const effectiveApplyStyle = selectedInteraction
+                              ? getEffectiveApplyStyle(selectedInteraction.trigger, prop.key, selectedTween.apply_styles)
+                              : (selectedTween.apply_styles?.[prop.key] || 'on-trigger');
+                            // Intro triggers (load, scroll-into-view) are implicitly on-load
+                            // to prevent flicker — lock the toggle in that case.
+                            const isImplicitOnLoad = selectedInteraction
+                              ? (selectedInteraction.trigger === 'load' || selectedInteraction.trigger === 'scroll-into-view')
+                              : false;
+                            const isOnLoad = effectiveApplyStyle === 'on-load';
+
+                            return (
+                              <>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="xs"
+                                      variant="secondary"
+                                      className="size-7 p-0 shrink-0 transition-none"
+                                      disabled={isFromCurrent || isImplicitOnLoad}
+                                      onClick={() => {
+                                        const currentValue = selectedTween.apply_styles?.[prop.key] || 'on-trigger';
+                                        handleUpdateTween(selectedTween.id, {
+                                          apply_styles: {
+                                            ...selectedTween.apply_styles,
+                                            [prop.key]: currentValue === 'on-load' ? 'on-trigger' : 'on-load',
+                                          },
+                                        });
+                                      }}
+                                    >
+                                      <Icon name={isOnLoad ? 'page' : 'cursor-default'} />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" align="start">
+                                    {isImplicitOnLoad
+                                      ? 'Always applied on page load for this trigger'
+                                      : isOnLoad
+                                        ? 'Apply property style on page load'
+                                        : 'Apply property style on trigger'}
+                                  </TooltipContent>
+                                </Tooltip>
 
                               <div className="w-full flex items-center gap-1.5">
                                 {isFromCurrent ? (
@@ -2434,10 +2440,11 @@ export default function InteractionsPanel({
                                   >
                                     Set value <Icon name="chevronRight" className="size-2.5 opacity-60" /> Set value
                                   </DropdownMenuCheckboxItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </>
-                          )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </>
+                            );
+                          })()}
 
                           <div className="w-full flex items-center gap-1.5">
                             {isToCurrent ? (

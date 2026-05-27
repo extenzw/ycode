@@ -2,8 +2,47 @@
  * Animation utility functions and constants for GSAP interactions
  */
 
-import type { InteractionTween, TweenProperties, Layer, Breakpoint } from '@/types';
+import type { InteractionTween, LayerInteraction, TweenProperties, Layer, Breakpoint, ApplyStyles, TweenPropertyKey } from '@/types';
 import { BREAKPOINTS } from '@/lib/breakpoint-utils';
+
+/**
+ * One-shot intro triggers where the `from` state should be applied on initial
+ * paint to avoid the element flashing in its `to` state before JS runs.
+ */
+const IMPLICIT_ON_LOAD_TRIGGERS: ReadonlyArray<LayerInteraction['trigger']> = ['load', 'scroll-into-view'];
+
+/**
+ * Returns the effective apply mode for a tween property, treating intro
+ * triggers (load, scroll-into-view) as implicit `on-load` so the initial
+ * state is painted server-side. Stops `to`-state flashes before the
+ * timeline starts.
+ */
+export function getEffectiveApplyStyle(
+  trigger: LayerInteraction['trigger'],
+  propertyKey: TweenPropertyKey,
+  applyStyles: InteractionTween['apply_styles'] | undefined
+): ApplyStyles {
+  if (IMPLICIT_ON_LOAD_TRIGGERS.includes(trigger)) return 'on-load';
+  return applyStyles?.[propertyKey] || 'on-trigger';
+}
+
+/**
+ * Default `apply_styles` for a new tween based on the interaction trigger.
+ * Intro triggers default every property to `on-load` to avoid flicker.
+ */
+export function getDefaultApplyStyles(trigger: LayerInteraction['trigger']): InteractionTween['apply_styles'] {
+  const mode: ApplyStyles = IMPLICIT_ON_LOAD_TRIGGERS.includes(trigger) ? 'on-load' : 'on-trigger';
+  return {
+    x: mode,
+    y: mode,
+    rotation: mode,
+    scale: mode,
+    skewX: mode,
+    skewY: mode,
+    autoAlpha: mode,
+    display: mode,
+  };
+}
 
 /**
  * Creates a SplitText instance with responsive animation support
@@ -446,10 +485,11 @@ export function collectEditorHiddenLayerIds(layers: Layer[]): Map<string, Breakp
       if (layer.interactions) {
         layer.interactions.forEach((interaction) => {
           (interaction.tweens || []).forEach((tween) => {
-            // Check if display: hidden with on-load apply style
+            // Check if display: hidden with effective on-load apply style
+            // (explicit on-load OR intro trigger like load/scroll-into-view)
             if (
               tween.from?.display === 'hidden' &&
-              tween.apply_styles?.display === 'on-load'
+              getEffectiveApplyStyle(interaction.trigger, 'display', tween.apply_styles) === 'on-load'
             ) {
               const breakpoints = interaction.timeline?.breakpoints || [];
               const existing = hiddenLayerMap.get(tween.layer_id);
@@ -591,11 +631,11 @@ export function generateInitialAnimationCSS(layers: Layer[]): InitialAnimationRe
             const styles: string[] = [];
             const transforms: string[] = [];
 
-            // Build CSS from 'from' properties that have apply_styles: 'on-load'
+            // Build CSS from 'from' properties whose effective apply mode is 'on-load'.
+            // Intro triggers (load, scroll-into-view) are implicitly on-load to prevent flicker.
             PROPERTY_OPTIONS.forEach((opt) => {
               opt.properties.forEach((prop) => {
-                // Only apply styles for properties with apply_styles: 'on-load'
-                if (tween.apply_styles?.[prop.key] !== 'on-load') return;
+                if (getEffectiveApplyStyle(interaction.trigger, prop.key, tween.apply_styles) !== 'on-load') return;
 
                 const value = tween.from[prop.key];
                 if (value === null || value === undefined) return;
