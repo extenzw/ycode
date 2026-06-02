@@ -123,6 +123,7 @@ export interface EffectsDesign {
   backdropBlur?: string;
   filter?: string;
   backdropFilter?: string;
+  mixBlendMode?: string;
 }
 
 export interface PositioningDesign {
